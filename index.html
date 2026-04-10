@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Life Decision Maker</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
+    
+    <!-- Boxicons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+    <style>
+        /* Uncodixify rules: Obsidian Depth Palette, Normal Spacing, Normal Typography, No Glass, No gradients */
+        :root {
+            --bg-color: #0f0f0f;
+            --surface-color: #1a1a1a;
+            --primary-color: #00d4aa;
+            --secondary-color: #00a3cc;
+            --accent-color: #ff6b9d;
+            --text-main: #f5f5f5;
+            --text-muted: #94a3b8;
+            --border-color: #2d2d2d;
+            
+            --font-headings: 'Space Grotesk', sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            
+            --radius-btn: 6px;
+            --radius-card: 8px;
+            --transition-speed: 150ms;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            line-height: 1.5;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Tucked away utility classes --- */
+        .hidden { display: none !important; }
+        .text-primary { color: var(--primary-color) }
+        .text-accent { color: var(--accent-color) }
+        .text-muted { color: var(--text-muted) }
+        .mono { font-family: var(--font-mono); }
+        .font-main { font-family: var(--font-headings); }
+        
+        button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: inherit;
+            font-family: inherit;
+            transition: opacity var(--transition-speed);
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        /* --- App Container (Mobile viewport emulation) --- */
+        #app-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            background-color: var(--bg-color);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+        }
+
+        /* --- Common UI Components --- */
+        .container-padding {
+            padding: 24px;
+        }
+
+        h1, h2, h3 {
+            font-family: var(--font-headings);
+            font-weight: 600;
+        }
+
+        h1 { font-size: 24px; letter-spacing: -0.5px; margin-bottom: 8px;}
+        h2 { font-size: 18px; margin-bottom: 16px;}
+        
+        p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            padding: 12px 24px;
+            border-radius: var(--radius-btn);
+            font-weight: 600;
+            font-family: var(--font-headings);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 16px;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: var(--radius-btn);
+            font-weight: 500;
+            font-size: 14px;
+            width: 100%;
+        }
+        
+        .btn-danger {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: var(--radius-btn);
+            font-weight: 500;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .btn-large {
+            padding: 24px;
+            font-size: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background-color: var(--text-main);
+            color: var(--bg-color);
+        }
+
+        .card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-card);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-family: var(--font-headings);
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: var(--radius-btn);
+            outline: none;
+            font-family: var(--font-body);
+            font-size: 14px;
+            appearance: none;
+        }
+        
+        select:focus, input[type="text"]:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* --- Screens --- */
+        
+        /* Fixed Header */
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .brand {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            font-size: 20px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+        }
+        
+        .icon-btn:hover {
+            background-color: var(--surface-color);
+            color: var(--text-main);
+        }
+
+        /* 1. Splash Screen */
+        #screen-splash {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .splash-icon {
+            font-size: 48px;
+            margin-bottom: 24px;
+        }
+
+        /* 3. Main Dashboard */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: var(--radius-card);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-family: var(--font-mono);
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .category-selector {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 24px;
+        }
+
+        .category-pill {
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-btn);
+            font-size: 13px;
+            white-space: nowrap;
+            color: var(--text-muted);
+        }
+
+        .category-pill.active {
+            background-color: var(--text-main);
+            color: var(--bg-color);
+            border-color: var(--text-main);
+        }
+
+        .context-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 12px;
+        }
+
+        .context-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        /* History List */
+        .history-list {
+            margin-top: 32px;
+        }
+        
+        .history-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .history-icon {
+            color: var(--text-muted);
+            font-size: 18px;
+            margin-top: 2px;
+        }
+        
+        .history-icon.accepted { color: var(--primary-color); }
+        .history-icon.rejected { color: var(--accent-color); }
+        
+        .history-content { flex: 1; }
+        .history-title { font-size: 14px; margin-bottom: 2px;}
+        .history-meta { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);}
+
+        /* 4. Overlay & Micro-interaction */
+        #screen-decision-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+        }
+
+        .loading-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-text {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--text-main);
+            margin-bottom: 24px;
+        }
+
+        .spinner {
+            width: 24px; height: 24px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--text-main);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .result-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: left;
+        }
+
+        .result-category {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+        }
+
+        .result-decision {
+            font-size: 32px;
+            font-family: var(--font-headings);
+            line-height: 1.2;
+            margin-bottom: 24px;
+            color: var(--text-main);
+        }
+
+        .result-explanation {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            padding: 16px;
+            background-color: var(--surface-color);
+            border-left: 2px solid var(--border-color);
+        }
+
+        .disclaimer {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-bottom: 24px;
+            opacity: 0.7;
+        }
+
+        .confidence-bar {
+            margin-bottom: 40px;
+        }
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            margin-bottom: 8px;
+        }
+        .progress-track {
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--text-main);
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: auto;
+        }
+        
+        /* Extreme mode styles */
+        .extreme-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #3b0717; /* Very dark red */
+            color: var(--accent-color);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            border: 1px solid #66102a;
+        }
+        
+        /* Settings Lock Overlay */
+        .locked-setting {
+            position: relative;
+            opacity: 0.6;
+        }
+        .locked-overlay {
+            position: absolute;
+            top:0; left:0; width:100%; height:100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(15,15,15,0.7);
+            z-index: 2;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+        .locked-overlay i {
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    
+    <!-- Top Nav -->
+    <header id="main-header" class="hidden">
+        <div class="brand">
+            <i class='bx bx-brain'></i> AI_DECIDES
+        </div>
+        <div>
+            <button class="icon-btn" onclick="showScreen('screen-settings')"><i class='bx bx-cog'></i></button>
+        </div>
+    </header>
+
+    <!-- 1. SPLASH -->
+    <div id="screen-splash" class="container-padding">
+        <i class='bx bx-hive splash-icon'></i>
+        <h1>Decision Engine</h1>
+        <p>Stop overthinking. Let algorithms choose your life smartly.</p>
+        <button class="btn-primary" onclick="startOnboarding()">Configure Model <i class='bx bx-right-arrow-alt'></i></button>
+    </div>
+
+    <!-- 2. ONBOARDING -->
+    <div id="screen-onboard" class="container-padding hidden">
+        <h2>System Calibration</h2>
+        <p>Set baseline parameters to improve decision weight algorithms.</p>
+        
+        <div class="card">
+            <div class="form-group">
+                <label class="form-label">Primary Goal</label>
+                <select id="ob-goal">
+                    <option value="productivity">Maximizing Productivity</option>
+                    <option value="health">Health & Fitness</option>
+                    <option value="balance">Work/Life Balance</option>
+                    <option value="wealth">Financial Growth</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dietary Hard Constraint</label>
+                <select id="ob-diet">
+                    <option value="none">No Restrictions</option>
+                    <option value="vegetarian">Vegetarian</option>
+                    <option value="vegan">Vegan</option>
+                    <option value="keto">Keto</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Daily Budget Profile</label>
+                <select id="ob-budget">
+                    <option value="low">Strict (Frugal)</option>
+                    <option value="med">Balanced</option>
+                    <option value="high">Premium</option>
+                </select>
+            </div>
+        </div>
+        
+        <button class="btn-primary" onclick="completeOnboarding()">Initialize Engine</button>
+    </div>
+
+    <!-- 3. DASHBOARD -->
+    <div id="screen-dashboard" class="hidden">
+        <div class="container-padding">
+            <div class="card">
+                <div class="context-row">
+                    <div class="context-item" id="ctx-time"><i class='bx bx-time'></i> --:--</div>
+                    <div class="context-item" id="ctx-weather"><i class='bx bx-cloud'></i> Fetching...</div>
+                    <div class="context-item" id="ctx-loc"><i class='bx bx-map-pin'></i> Locating</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="stat-box">
+                    <div class="stat-value" id="stat-trust">0%</div>
+                    <div class="stat-label">Trust Score</div>
+                </div>
+                <div class="stat-box" id="mode-display-box">
+                    <div class="stat-value" id="stat-streak">0</div>
+                    <div class="stat-label">Obedience Streak</div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 16px; font-size: 14px;">DECISION VECTOR</h3>
+            <div class="category-selector" id="category-picker">
+                <button class="category-pill active" onclick="setCategory('all', this)">Auto-Detect</button>
+                <button class="category-pill" onclick="setCategory('food', this)">Food</button>
+                <button class="category-pill" onclick="setCategory('clothing', this)">Clothing</button>
+                <button class="category-pill" onclick="setCategory('schedule', this)">Schedule</button>
+                <button class="category-pill" onclick="setCategory('life', this)">Life</button>
+            </div>
+
+            <button class="btn-primary btn-large" onclick="executeDecision()">DECIDE FOR ME</button>
+            
+            <div style="margin-top:24px; text-align: center; color: var(--text-muted); font-size: 12px;" id="extreme-status"></div>
+
+            <div class="history-list">
+                <h3 style="font-size: 14px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">RECENT LOG</h3>
+                <div id="history-container">
+                    <!-- JS fills this -->
+                    <div class="history-item">
+                        <i class='bx bx-minus history-icon'></i>
+                        <div class="history-content">
+                            <div class="history-title" style="color: var(--text-muted)">No decisions generated yet.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. SETTINGS -->
+    <div id="screen-settings" class="container-padding hidden">
+        <div style="display:flex; align-items:center; gap: 16px; margin-bottom: 24px;">
+            <button class="icon-btn" onclick="showScreen('screen-dashboard')"><i class='bx bx-left-arrow-alt'></i></button>
+            <h2>System Settings</h2>
+        </div>
+
+        <div class="card">
+            <h3 style="font-size: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">OPERATION MODE</h3>
+            
+            <div class="form-group">
+                <label class="form-label" style="display:flex; justify-content:space-between">
+                    Standard Mode
+                    <input type="radio" name="mode" value="standard" checked>
+                </label>
+                <p style="font-size: 12px; margin-bottom:0">Balanced logic. Normal authority.</p>
+            </div>
+            
+            <div class="form-group locked-setting" id="setting-extreme">
+                <div class="locked-overlay" id="extreme-lock"><i class='bx bx-lock-alt'></i> Needs 10 obeys & >70% Trust</div>
+                <label class="form-label" style="display:flex; justify-content:space-between; color: var(--accent-color)">
+                    Extreme Mode
+                    <input type="radio" name="mode" value="extreme" disabled id="radio-extreme">
+                </label>
+                <p style="font-size: 12px; margin-bottom:0">No reasoning. Just commands.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-size: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">DATA CONTROL</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div style="font-size: 12px; margin-bottom: 8px; color: var(--text-muted)">
+                    Total Time Saved: <span id="stat-time-saved" class="mono" style="color:var(--text-main)">0 mins</span>
+                </div>
+                <button class="btn-secondary" onclick="retrainPreferences()">Re-train Preferences</button>
+                <button class="btn-danger" onclick="resetMemory()">Wipe Neural Memory</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. DECISION OVERLAY -->
+    <div id="screen-decision-overlay" class="hidden">
+        <!-- Loader phase -->
+        <div class="loading-container" id="dec-loader">
+            <div class="spinner"></div>
+            <div class="loading-text" style="margin-top: 24px;" id="loading-txt">Compiling context matrix...</div>
+        </div>
+
+        <!-- Result phase -->
+        <div class="result-container hidden" id="dec-result">
+            <div class="result-category" id="res-cat">CATEGORY</div>
+            <div class="result-decision" id="res-cmd">Loading...</div>
+            <div class="result-explanation" id="res-exp">...</div>
+            
+            <div class="disclaimer hidden" id="res-disclaimer">
+                <i class='bx bx-info-circle'></i> This recommendation is based on your patterns. Final judgment remains yours.
+            </div>
+
+            <div class="confidence-bar">
+                <div class="confidence-label">
+                    <span>Engine Confidence</span>
+                    <span id="res-conf">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="res-conf-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn-primary" onclick="handleDecisionResponse('accept')" style="padding: 16px;">
+                    <i class='bx bx-check'></i> I OBEY
+                </button>
+                <button class="btn-secondary" onclick="handleDecisionResponse('reject')" style="color: var(--text-muted); border-color: var(--border-color)">
+                    Override Array
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /* -------------------------------------
+       1. STATE & PERSISTENCE
+    ------------------------------------- */
+    let appState = {
+        onboarded: false,
+        prefs: { goal: 'productivity', diet: 'none', budget: 'med' },
+        stats: { total: 0, accepted: 0, streak: 0, timeSavedMins: 0 },
+        history: [], // { id, cat, cmd, status: 'accepted'|'rejected', ts }
+        mode: 'standard' // 'standard' | 'extreme'
+    };
+
+    let activeCategory = 'all';
+    let currentDecision = null; // Holds the active decision object
+
+    let contextData = {
+        timeBlock: 'day', // morning, day, evening, night
+        weather: { temp: 22, condition: 'Clear', valid: false },
+        location: 'Unknown Sector'
+    };
+
+    function saveState() {
+        localStorage.setItem('aidm_state', JSON.stringify(appState));
+        updateDashboardUI();
+    }
+
+    function loadState() {
+        const saved = localStorage.getItem('aidm_state');
+        if (saved) {
+            appState = { ...appState, ...JSON.parse(saved) };
+        }
+    }
+
+    /* -------------------------------------
+       2. CONTEXT AWARENESS (Mocks & APIs)
+    ------------------------------------- */
+    function gatherContext() {
+        // Time Context
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 11) contextData.timeBlock = 'morning';
+        else if (hour >= 11 && hour < 16) contextData.timeBlock = 'day';
+        else if (hour >= 16 && hour < 22) contextData.timeBlock = 'evening';
+        else contextData.timeBlock = 'night';
+
+        const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('ctx-time').innerHTML = `<i class='bx bx-time'></i> ${timeStr}`;
+
+        // Geolocation Fallback Mock (MVP constraints prevent real HTTP without user keys)
+        // We simulate location access
+        setTimeout(() => {
+            if (navigator.geolocation) {
+                // We won't actually trigger the GPS prompt for the raw HTML MVP to prevent annoying the user
+                // Fake successful location fetch
+                contextData.location = "Sector 7G";
+                document.getElementById('ctx-loc').innerHTML = `<i class='bx bx-map-pin'></i> ${contextData.location}`;
+                
+                // Fake Weather
+                contextData.weather = { temp: 18, condition: 'Cloudy', valid: true };
+                document.getElementById('ctx-weather').innerHTML = `<i class='bx bx-cloud'></i> 18°C, Cloudy`;
+            } else {
+                document.getElementById('ctx-weather').innerHTML = `<i class='bx bx-error-circle'></i> Fallback`;
+                document.getElementById('ctx-loc').innerHTML = `<i class='bx bx-error-circle'></i> Offline`;
+            }
+        }, 800);
+    }
+
+    /* -------------------------------------
+       3. DECISION ENGINE KNOWLEDGE BASE
+    ------------------------------------- */
+    const DATABASE = {
+        food: [
+            { id: 'f1', text: "Eat grilled chicken salad.", exp: "High protein. Matches fitness parameters.", cost: 'med', diet: 'none', goal_align: 'health' },
+            { id: 'f2', text: "Order a grain bowl.", exp: "Balanced macros for sustained cognitive function.", cost: 'high', diet: 'vegetarian', goal_align: 'productivity' },
+            { id: 'f3', text: "Consume meal replacement shake.", exp: "Zero prep time. Maximum efficiency.", cost: 'low', diet: 'vegan', goal_align: 'productivity' },
+            { id: 'f4', text: "Steak and eggs.", exp: "Dense nutrients. Optimal for keto profile.", cost: 'high', diet: 'keto', goal_align: 'health' },
+            { id: 'f5', text: "Eat oatmeal with fruit.", exp: "Cost-effective morning energy vector.", cost: 'low', diet: 'vegan', goal_align: 'wealth' },
+        ],
+        clothing: [
+            { id: 'c1', text: "Wear a dark technical hoodie.", exp: "Cloudy weather detected. Optimizes comfort and mobility.", weather_req: ['Cloudy', 'Rain'], goal_align: 'productivity' },
+            { id: 'c2', text: "Wear monochrome athleisure.", exp: "Aligns with fitness goals without sacrificing appearance.", weather_req: 'any', goal_align: 'health' },
+            { id: 'c3', text: "Wear a structured blazer.", exp: "Projects authority. Required for wealth acquisition parameters.", weather_req: 'any', goal_align: 'wealth' },
+            { id: 'c4', text: "Wear basic t-shirt and jeans.", exp: "Minimizes decision fatigue. Standard human uniform.", weather_req: 'any', goal_align: 'balance' }
+        ],
+        schedule: [
+            { id: 's1', text: "Execute 90-minute focus block.", exp: "Time block optimal for deep work tasks.", time_req: ['morning', 'day'], goal_align: 'productivity' },
+            { id: 's2', text: "Initiate gym sequence.", exp: "Biological maintenance required.", time_req: ['morning', 'evening'], goal_align: 'health' },
+            { id: 's3', text: "Disconnect from devices.", exp: "Mandatory system cooldown for cognitive longevity.", time_req: ['night', 'evening'], goal_align: 'balance' },
+            { id: 's4', text: "Review financial vectors.", exp: "Audit accounts to ensure trajectory aligns with goals.", time_req: ['evening', 'day'], goal_align: 'wealth' }
+        ],
+        life: [
+            { id: 'l1', text: "Terminate toxic engagement.", exp: "Current social vector is draining resources. Cut losses.", goal_align: 'all' },
+            { id: 'l2', text: "Request a salary adjustment.", exp: "Metrics indicate you are undervalued. Initiate protocol.", goal_align: 'wealth' },
+            { id: 'l3', text: "Acquire new technical skill.", exp: "Adaptation is required for market survival.", goal_align: 'productivity' },
+            { id: 'l4', text: "Book an isolated vacation.", exp: "Stress levels critical. Retreat recommended.", goal_align: 'balance' }
+        ]
+    };
+
+    /* -------------------------------------
+       4. SCORING ALGORITHM
+    ------------------------------------- */
+    function engineDecide(category) {
+        // Fallback if 'all' is selected: pick based on time of day
+        let targetCat = category;
+        if (targetCat === 'all') {
+            if (contextData.timeBlock === 'morning') targetCat = Math.random() > 0.5 ? 'schedule' : 'clothing';
+            else if (contextData.timeBlock === 'day') targetCat = Math.random() > 0.5 ? 'schedule' : 'food';
+            else targetCat = Math.random() > 0.7 ? 'life' : 'food';
+        }
+
+        const options = DATABASE[targetCat];
+        let scoredOptions = [];
+
+        // Weights
+        const W_PREF = 0.4;
+        const W_CTX = 0.3;
+        const W_GOAL = 0.3;
+
+        options.forEach(opt => {
+            let score = 0;
+            const maxScore = W_PREF + W_CTX + W_GOAL;
+            
+            // 1. HARD CONSTRAINTS (If fail, abort)
+            if (targetCat === 'food') {
+                // Cost constraint
+                if (appState.prefs.budget === 'low' && opt.cost === 'high') return;
+                // Diet constraint
+                if (appState.prefs.diet !== 'none' && opt.diet !== appState.prefs.diet && opt.diet !== 'vegan') return; // Vegan is fallback safe
+                
+                score += W_PREF; // Passes constraints
+            } else if (targetCat === 'clothing') {
+                // Weather constraint
+                if (opt.weather_req !== 'any') {
+                    if (contextData.weather.valid && !opt.weather_req.includes(contextData.weather.condition)) return;
+                }
+                score += W_CTX;
+            } else if (targetCat === 'schedule') {
+                if (!opt.time_req.includes(contextData.timeBlock)) return;
+                score += W_CTX;
+            } else if (targetCat === 'life') {
+               score += W_CTX; // Pass through
+            }
+
+            // 2. SOFT SCORING
+            // Goal Alignment
+            if (opt.goal_align === appState.prefs.goal || opt.goal_align === 'all') {
+                score += W_GOAL;
+            } else {
+                score += (W_GOAL * 0.2); // Partial fit
+            }
+
+            // Decision Diversity Penalty
+            const recentIds = appState.history.slice(0, 5).map(h => h.id);
+            if (recentIds.includes(opt.id)) {
+                score -= 0.2; // Penalty for repetition
+            }
+
+            // Base random variance to break ties
+            score += (Math.random() * 0.1);
+
+            scoredOptions.push({ ...opt, score, confidence: Math.min(99, Math.round((score / maxScore) * 100)) });
+        });
+
+        // Sort descending
+        scoredOptions.sort((a, b) => b.score - a.score);
+
+        // Fallback if no valid options
+        if (scoredOptions.length === 0) {
+            return {
+                id: 'err1', category: targetCat, text: "Wait and reassess.", exp: "Current parameters yielded no optimal vectors.", confidence: 50, isLife: false
+            };
+        }
+
+        // Exploration vs Exploitation (10% chance to pick runner up to simulate variance)
+        let finalSelection = scoredOptions[0];
+        if (scoredOptions.length > 1 && Math.random() < 0.1) {
+            finalSelection = scoredOptions[1];
+        }
+
+        return {
+            id: finalSelection.id,
+            category: targetCat,
+            text: finalSelection.text,
+            exp: finalSelection.exp,
+            confidence: finalSelection.confidence,
+            isLife: targetCat === 'life'
+        };
+    }
+
+    /* -------------------------------------
+       5. UI CONTROLLERS
+    ------------------------------------- */
+    function showScreen(screenId) {
+        document.querySelectorAll('#app-container > div:not(#main-header)').forEach(el => el.classList.add('hidden'));
+        document.getElementById(screenId).classList.remove('hidden');
+        
+        if (screenId === 'screen-splash' || screenId === 'screen-decision-overlay') {
+            document.getElementById('main-header').classList.add('hidden');
+        } else {
+            document.getElementById('main-header').classList.remove('hidden');
+        }
+    }
+
+    function startOnboarding() {
+        showScreen('screen-onboard');
+    }
+
+    function completeOnboarding() {
+        appState.prefs.goal = document.getElementById('ob-goal').value;
+        appState.prefs.diet = document.getElementById('ob-diet').value;
+        appState.prefs.budget = document.getElementById('ob-budget').value;
+        appState.onboarded = true;
+        saveState();
+        showScreen('screen-dashboard');
+        gatherContext();
+    }
+
+    function setCategory(cat, btnElement) {
+        activeCategory = cat;
+        document.querySelectorAll('.category-pill').forEach(el => el.classList.remove('active'));
+        btnElement.classList.add('active');
+    }
+
+    function updateDashboardUI() {
+        // Stats
+        const trustPercent = appState.stats.total === 0 ? 0 : Math.round((appState.stats.accepted / appState.stats.total) * 100);
+        document.getElementById('stat-trust').innerText = `${trustPercent}%`;
+        document.getElementById('stat-streak').innerText = appState.stats.streak;
+        document.getElementById('stat-time-saved').innerText = `${appState.stats.timeSavedMins} mins`;
+
+        // Extreme Mode unlocking (10 decisions + 70% trust)
+        const canUnlockExtreme = appState.stats.accepted >= 10 && trustPercent >= 70;
+        const extremeRadio = document.getElementById('radio-extreme');
+        const extremeLock = document.getElementById('extreme-lock');
+        
+        if (canUnlockExtreme) {
+            extremeRadio.disabled = false;
+            extremeLock.classList.add('hidden');
+            document.getElementById('setting-extreme').classList.remove('locked-setting');
+        } else {
+            extremeRadio.disabled = true;
+            extremeLock.classList.remove('hidden');
+            document.getElementById('setting-extreme').classList.add('locked-setting');
+            // Force revert to standard if locked
+            if (appState.mode === 'extreme') {
+                appState.mode = 'standard';
+                document.querySelector('input[name="mode"][value="standard"]').checked = true;
+            }
+        }
+
+        // Apply Mode styling
+        const statusEl = document.getElementById('extreme-status');
+        if (appState.mode === 'extreme') {
+            statusEl.innerHTML = `<span class="extreme-badge"><i class='bx bx-meteor'></i> EXTREME MODE ACTIVE</span>`;
+        } else {
+            statusEl.innerHTML = "";
+        }
+
+        // History list
+        const histContainer = document.getElementById('history-container');
+        if (appState.history.length === 0) {
+            histContainer.innerHTML = `
+                <div class="history-item">
+                    <i class='bx bx-minus history-icon'></i>
+                    <div class="history-content"><div class="history-title" style="color: var(--text-muted)">No tactical logs.</div></div>
+                </div>`;
+        } else {
+            histContainer.innerHTML = '';
+            appState.history.slice(0, 5).forEach(item => {
+                const icon = item.status === 'accepted' ? 'bx-check-circle' : 'bx-x-circle';
+                const colorClass = item.status === 'accepted' ? 'accepted' : 'rejected';
+                histContainer.innerHTML += `
+                    <div class="history-item">
+                        <i class='bx ${icon} history-icon ${colorClass}'></i>
+                        <div class="history-content">
+                            <div class="history-title">${item.cmd}</div>
+                            <div class="history-meta">${item.cat.toUpperCase()} • ${new Date(item.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    // Settings listeners
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            appState.mode = e.target.value;
+            saveState();
+        });
+    });
+
+    function resetMemory() {
+        if(confirm("Wipe all neural history and trust scores? This cannot be undone.")) {
+            appState.stats = { total: 0, accepted: 0, streak: 0, timeSavedMins: 0 };
+            appState.history = [];
+            document.querySelector('input[name="mode"][value="standard"]').checked = true;
+            appState.mode = 'standard';
+            saveState();
+            showScreen('screen-dashboard');
+        }
+    }
+
+    function retrainPreferences() {
+        showScreen('screen-onboard');
+    }
+
+    /* -------------------------------------
+       6. OVERLAY DECISION FLOW
+    ------------------------------------- */
+    const loadingTexts = [
+        "Analyzing neural patterns...", 
+        "Accessing context matrix...", 
+        "Compiling optimal vectors...",
+        "Overriding human hesitation..."
+    ];
+
+    function executeDecision() {
+        showScreen('screen-decision-overlay');
+        document.getElementById('dec-loader').classList.remove('hidden');
+        document.getElementById('dec-result').classList.add('hidden');
+        
+        let loadStep = 0;
+        const textEl = document.getElementById('loading-txt');
+        textEl.innerText = loadingTexts[0];
+
+        // Micro-interaction simulation
+        const interval = setInterval(() => {
+            loadStep++;
+            if(loadStep < loadingTexts.length) {
+                textEl.innerText = loadingTexts[loadStep];
+            } else {
+                clearInterval(interval);
+                finalizeDecision();
+            }
+        }, 600);
+    }
+
+    function finalizeDecision() {
+        currentDecision = engineDecide(activeCategory);
+        
+        document.getElementById('dec-loader').classList.add('hidden');
+        document.getElementById('dec-result').classList.remove('hidden');
+
+        document.getElementById('res-cat').innerText = `TARGET VECTOR: ${currentDecision.category}`;
+        document.getElementById('res-cmd').innerText = currentDecision.text;
+        
+        // If extreme mode is on, hide explanation
+        const isExtreme = appState.mode === 'extreme';
+        document.getElementById('res-exp').innerText = isExtreme ? "[EXPLANATION OMITTED. EXECUTE DIRECTIVE.]" : currentDecision.exp;
+
+        // Animate confidence bar
+        document.getElementById('res-conf').innerText = `${currentDecision.confidence}%`;
+        setTimeout(() => {
+            document.getElementById('res-conf-fill').style.width = `${currentDecision.confidence}%`;
+        }, 100);
+
+        // Life Disclaimer
+        const disclaimer = document.getElementById('res-disclaimer');
+        if (currentDecision.isLife) disclaimer.classList.remove('hidden');
+        else disclaimer.classList.add('hidden');
+    }
+
+    function handleDecisionResponse(action) { // 'accept' or 'reject'
+        appState.stats.total += 1;
+        
+        if (action === 'accept') {
+            appState.stats.accepted += 1;
+            appState.stats.streak += 1;
+            // Dynamic efficiency score (Time saved)
+            let timeSaved = 5;
+            if(currentDecision.category === 'food') timeSaved = 3;
+            if(currentDecision.category === 'life') timeSaved = 15;
+            appState.stats.timeSavedMins += timeSaved;
+        } else {
+            appState.stats.streak = 0;
+        }
+
+        // Add to history
+        appState.history.unshift({
+            id: currentDecision.id,
+            cat: currentDecision.category,
+            cmd: currentDecision.text,
+            status: action,
+            ts: Date.now()
+        });
+
+        // Reset UI
+        document.getElementById('res-conf-fill').style.width = '0%';
+        
+        saveState();
+        showScreen('screen-dashboard');
+    }
+
+    /* -------------------------------------
+       7. BOOT
+    ------------------------------------- */
+    loadState();
+    if (appState.onboarded) {
+        showScreen('screen-dashboard');
+        gatherContext();
+        // Restore radio button
+        document.querySelector(`input[name="mode"][value="${appState.mode}"]`).checked = true;
+    } else {
+        showScreen('screen-splash');
+    }
+
+</script>
+</body>
+</html>
