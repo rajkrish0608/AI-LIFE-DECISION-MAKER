@@ -1,0 +1,26 @@
+{
+  "name": "ai-life-decision-maker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajkrish0608/AI-LIFE-DECISION-MAKER.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/rajkrish0608/AI-LIFE-DECISION-MAKER/issues"
+  },
+  "homepage": "https://github.com/rajkrish0608/AI-LIFE-DECISION-MAKER#readme",
+  "dependencies": {
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1"
+  }
+}
