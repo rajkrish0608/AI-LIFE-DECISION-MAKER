@@ -20,8 +20,6 @@ let contextData = {
     usingFallback: true
 };
 
-const WEATHER_API_KEY = "PLACEHOLDER_KEY"; // User will supply this in prod
-
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -70,12 +68,12 @@ async function gatherContext() {
             async (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-                contextData.location = "Local Sector";
+                contextData.location = "Local Sector Validated";
                 document.getElementById('ctx-loc').innerHTML = `<i class='bx bx-map-pin'></i> ${contextData.location}`;
                 
                 try {
-                    // Attempt real weather fetch
-                    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`);
+                    // Call SECURE Backend Proxy
+                    const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
                     if(!res.ok) throw new Error("API Failure");
                     const data = await res.json();
                     
@@ -106,145 +104,95 @@ function applyFallbackContext() {
 
 
 /* =======================================
-   3. DECISION ENGINE & KNOWLEDGE
+   3. LLM DECISION ENGINE (SECURE BACKEND)
 ======================================= */
-const DATABASE = {
-    food: [
-        { id: 'f1', text: "Eat grilled chicken salad.", exp: "High protein. Matches fitness parameters.", cost: 'med', diet: 'none', goal_align: 'health' },
-        { id: 'f2', text: "Order a grain bowl.", exp: "Balanced macros for sustained cognitive function.", cost: 'high', diet: 'vegetarian', goal_align: 'productivity' },
-        { id: 'f3', text: "Consume meal replacement shake.", exp: "Zero prep time. Maximum efficiency.", cost: 'low', diet: 'vegan', goal_align: 'productivity' },
-        { id: 'f4', text: "Steak and eggs.", exp: "Dense nutrients. Optimal for keto profile.", cost: 'high', diet: 'keto', goal_align: 'health' },
-        { id: 'f5', text: "Eat oatmeal with fruit.", exp: "Cost-effective morning energy vector.", cost: 'low', diet: 'vegan', goal_align: 'wealth' },
-    ],
-    clothing: [
-        { id: 'c1', text: "Wear a dark technical hoodie.", exp: "Cloudy weather detected. Optimizes comfort and mobility.", weather_req: ['Clouds', 'Rain', 'Snow'], goal_align: 'productivity' },
-        { id: 'c2', text: "Wear monochrome athleisure.", exp: "Aligns with fitness goals without sacrificing appearance.", weather_req: 'any', goal_align: 'health' },
-        { id: 'c3', text: "Wear a structured blazer.", exp: "Projects authority. Required for wealth acquisition parameters.", weather_req: 'any', goal_align: 'wealth' },
-        { id: 'c4', text: "Wear basic t-shirt and jeans.", exp: "Minimizes decision fatigue. Standard human uniform.", weather_req: 'any', goal_align: 'balance' }
-    ],
-    schedule: [
-        { id: 's1', text: "Execute 90-minute focus block.", exp: "Time block optimal for deep work tasks.", time_req: ['morning', 'day'], goal_align: 'productivity' },
-        { id: 's2', text: "Initiate gym sequence.", exp: "Biological maintenance required.", time_req: ['morning', 'evening'], goal_align: 'health' },
-        { id: 's3', text: "Disconnect from devices.", exp: "Mandatory system cooldown for cognitive longevity.", time_req: ['night', 'evening'], goal_align: 'balance' },
-        { id: 's4', text: "Review financial vectors.", exp: "Audit accounts to ensure trajectory aligns with goals.", time_req: ['evening', 'day'], goal_align: 'wealth' }
-    ],
-    life: [
-        { id: 'l1', text: "Terminate toxic engagement.", exp: "Current social vector is draining resources. Cut losses.", goal_align: 'all' },
-        { id: 'l2', text: "Request a salary adjustment.", exp: "Metrics indicate you are undervalued. Initiate protocol.", goal_align: 'wealth' },
-        { id: 'l3', text: "Acquire new technical skill.", exp: "Adaptation is required for market survival.", goal_align: 'productivity' },
-        { id: 'l4', text: "Book an isolated vacation.", exp: "Stress levels critical. Retreat recommended.", goal_align: 'balance' }
-    ]
-};
-
-// Determines 'Auto-Detect' category dynamically based on past acceptance
 function getDynamicCategory() {
     if (appState.history.length < 5) {
-        // Fallback to time-based defaults if not enough history
         const t = contextData.timeBlock;
         if (t === 'morning') return Math.random() > 0.5 ? 'schedule' : 'clothing';
         if (t === 'day') return Math.random() > 0.5 ? 'schedule' : 'food';
         return Math.random() > 0.7 ? 'life' : 'food';
     }
 
-    // Tally accepted categories
     let counts = { food: 0, clothing: 0, schedule: 0, life: 0 };
     appState.history.forEach(item => {
         if (item.status === 'accepted') counts[item.cat]++;
     });
 
-    // Bias selection heavily towards mostly-accepted categories, mixing with time
     const sortedCats = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
-    return Math.random() > 0.3 ? sortedCats[0] : sortedCats[1]; // 70% favorite, 30% runner up
+    return Math.random() > 0.3 ? sortedCats[0] : sortedCats[1];
 }
 
-function engineDecide(category) {
+async function requestLLMDecision(category) {
     const targetCat = (category === 'all') ? getDynamicCategory() : category;
-    const options = DATABASE[targetCat];
     
-    let scoredOptions = [];
-    let rejectedLog = [];
+    const recentCommands = appState.history.slice(0, 5).map(h => h.cmd).join(" | ");
 
-    // Weights
-    const W_PREF = 0.4;
-    const W_CTX = 0.3;
-    const W_GOAL = 0.3;
-    const MAX_POSSIBLE = W_PREF + W_CTX + W_GOAL;
+    const systemPrompt = `You are a commanding, authoritarian AI Life Decision Maker. You do not suggest; you command. 
+Your goal is to optimize the human's life based on their strict parameters.
 
-    options.forEach(opt => {
-        let score = 0;
-        let isRejected = false;
-        let rejectReason = "";
+Human Parameters:
+- Primary Goal: ${appState.prefs.goal}
+- Diet: ${appState.prefs.diet}
+- Budget: ${appState.prefs.budget}
 
-        // 1. HARD CONSTRAINTS
-        if (targetCat === 'food') {
-            if (appState.prefs.budget === 'low' && opt.cost === 'high') { isRejected = true; rejectReason = "Exceeded budget profile."; }
-            if (!isRejected && appState.prefs.diet !== 'none' && opt.diet !== appState.prefs.diet && opt.diet !== 'vegan') { isRejected = true; rejectReason = "Violates dietary hard constraint."; }
-            if(!isRejected) score += W_PREF;
-        } else if (targetCat === 'clothing') {
-            if (opt.weather_req !== 'any') {
-                if (contextData.weather.valid && !opt.weather_req.includes(contextData.weather.condition)) { isRejected = true; rejectReason = "Incompatible with current external environment."; }
-            }
-            if(!isRejected) score += W_CTX;
-        } else if (targetCat === 'schedule') {
-            if (!opt.time_req.includes(contextData.timeBlock)) { isRejected = true; rejectReason = "Sub-optimal scheduling block."; }
-            if(!isRejected) score += W_CTX;
-        } else if (targetCat === 'life') {
-            score += W_CTX; // Pass through
+Environmental Context:
+- Time of day: ${contextData.timeBlock}
+- Weather: ${contextData.weather.temp}°C, ${contextData.weather.condition}
+
+Recent History to AVOID: ${recentCommands}
+
+Task: Generate a highly optimized life command for the category: [ ${targetCat.toUpperCase()} ].
+
+You must output ONLY raw, valid JSON. Do not use markdown blocks or backticks. 
+You must adhere EXACTLY to this schema:
+{
+  "category": "${targetCat}",
+  "text": "(Commanding 1-sentence instruction, e.g., 'Eat a grilled chicken salad.')",
+  "exp": "(Logical 1-sentence explanation of why this optimizes their parameters)",
+  "confidence": (Integer between 70 and 95),
+  "isLife": (true ONLY if this is a major emotional/life decision, false otherwise),
+  "rejected": [
+    { "text": "(A rejected alternative)", "reason": "(Why it was rejected based on constraints)" },
+    { "text": "(A second rejected alternative)", "reason": "(Why it was rejected)" }
+  ]
+}
+OUTPUT ONLY JSON.`;
+
+    try {
+        // Call SECURE Backend Proxy (Vercel API route)
+        // This hides the Groq Key from the public.
+        const response = await fetch("/api/decide", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ systemPrompt })
+        });
+
+        const data = await response.json();
+        
+        // Handle Rate limits or proxy errors passed down
+        if (data.error && data.id) {
+            return data; // Backend returned a structured fallback JSON error
         }
 
-        if (isRejected) {
-            rejectedLog.push({ text: opt.text, reason: rejectReason });
-            return; // Skip giving it a real score
-        }
+        if (!response.ok) throw new Error(data.error || "Backend Integration Failed");
+        
+        return data;
 
-        // 2. SOFT SCORING
-        if (opt.goal_align === appState.prefs.goal || opt.goal_align === 'all') score += W_GOAL;
-        else score += (W_GOAL * 0.2); // Partial fit
-
-        // 3. Stonger Diversity Penalty (Look at last 10)
-        const recentIds = appState.history.slice(0, 10).map(h => h.id);
-        if (recentIds.includes(opt.id)) score -= 0.3;
-
-        // Base random tie-breaker
-        score += (Math.random() * 0.1);
-
-        let mathConf = Math.round((score / MAX_POSSIBLE) * 100);
-        let confBounded = Math.min(mathConf, 95); // Cap realistic confidence at 95%
-
-        scoredOptions.push({ ...opt, score, confidence: confBounded });
-    });
-
-    // Sort descending
-    scoredOptions.sort((a, b) => b.score - a.score);
-
-    if (scoredOptions.length === 0) {
+    } catch (err) {
+        console.error("LLM Generation Failed:", err);
         return {
-            id: 'err1', category: targetCat, text: "Wait and reassess.", exp: "Current parameters yielded no optimal vectors.", confidence: 50, isLife: false, rejected: rejectedLog
+            id: `err_${Date.now()}`,
+            category: targetCat,
+            text: "Pause operations.",
+            exp: "API neural link severed or rate limit engaged. Rest until bandwidth restores.",
+            confidence: 50,
+            isLife: false,
+            rejected: [{text: "Continue working", reason: "Proxy Error prevented compilation."}]
         };
     }
-
-    // Compile Rejected list from actual rejected items + lower scored items
-    for(let i=1; i < scoredOptions.length; i++) {
-        rejectedLog.push({ text: scoredOptions[i].text, reason: `Suboptimal coefficient overlap (${scoredOptions[i].confidence}%).` });
-    }
-
-    // Exploration vs Exploitation (10% pick runner-up to prevent stagnation)
-    let finalSelection = scoredOptions[0];
-    if (scoredOptions.length > 1 && Math.random() < 0.1) {
-        finalSelection = scoredOptions[1];
-        // Move the #1 choice down to the rejected log so transparency tracks it
-        rejectedLog.unshift({ text: scoredOptions[0].text, reason: "Engine overrode highest probability to prevent behavioral stagnation." });
-    }
-
-    return {
-        id: finalSelection.id,
-        category: targetCat,
-        text: finalSelection.text,
-        exp: finalSelection.exp,
-        confidence: finalSelection.confidence,
-        isLife: targetCat === 'life',
-        rejected: rejectedLog.slice(0, 3) // Return top 3 rejected for explainability
-    };
 }
 
 
@@ -285,7 +233,6 @@ function checkExtremeLock() {
     const msInDay = 1000 * 60 * 60 * 24;
     const daysSinceFirstUse = (Date.now() - appState.firstUsed) / msInDay;
     
-    // Extreme mode threshold: 10 obeys, 70% trust AND >= 2 days of usage
     return (appState.stats.accepted >= 10 && trustPercent >= 70 && daysSinceFirstUse >= 2);
 }
 
@@ -320,7 +267,6 @@ function updateDashboardUI() {
         statusEl.innerHTML = "";
     }
 
-    // Apply Mode Listener
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             appState.mode = e.target.value;
@@ -371,12 +317,12 @@ window.retrainPreferences = () => showScreen('screen-onboard');
 ======================================= */
 const loadingTexts = [
     "Analyzing neural patterns...", 
-    "Accessing context matrix...", 
-    "Compile constraint heuristics...",
+    "Accessing live OpenWeather matrix...", 
+    "Compiling constraint heuristics via Groq LLM...",
     "Overriding human hesitation..."
 ];
 
-window.executeDecision = () => {
+window.executeDecision = async () => {
     showScreen('screen-decision-overlay');
     document.getElementById('dec-loader').classList.remove('hidden');
     document.getElementById('dec-result').classList.add('hidden');
@@ -385,20 +331,19 @@ window.executeDecision = () => {
     const textEl = document.getElementById('loading-txt');
     textEl.innerText = loadingTexts[0];
 
-    const interval = setInterval(() => {
+    const cycleInterval = setInterval(() => {
         loadStep++;
-        if(loadStep < loadingTexts.length) {
-            textEl.innerText = loadingTexts[loadStep];
-        } else {
-            clearInterval(interval);
-            finalizeDecision();
-        }
-    }, 600);
+        if(loadStep < loadingTexts.length) textEl.innerText = loadingTexts[loadStep];
+    }, 800);
+
+    // AI Generation Call
+    currentDecision = await requestLLMDecision(activeCategory);
+    
+    clearInterval(cycleInterval);
+    finalizeDecision(); // Render the exact generated UI
 }
 
 function finalizeDecision() {
-    currentDecision = engineDecide(activeCategory);
-    
     document.getElementById('dec-loader').classList.add('hidden');
     document.getElementById('dec-result').classList.remove('hidden');
 
@@ -410,7 +355,7 @@ function finalizeDecision() {
 
     // Explainability Log
     const reqContainer = document.getElementById('res-rejected-list');
-    if (!isExtreme && currentDecision.rejected.length > 0) {
+    if (!isExtreme && currentDecision.rejected && currentDecision.rejected.length > 0) {
         document.getElementById('panel-rejected').classList.remove('hidden');
         reqContainer.innerHTML = '';
         currentDecision.rejected.forEach(rej => {
@@ -423,7 +368,6 @@ function finalizeDecision() {
     } else {
         document.getElementById('panel-rejected').classList.add('hidden');
     }
-
 
     document.getElementById('res-conf').innerText = `${currentDecision.confidence}%`;
     setTimeout(() => {
@@ -463,7 +407,7 @@ window.handleDecisionResponse = (action) => {
     });
 
     document.getElementById('res-conf-fill').style.width = '0%';
-    window.speechSynthesis.cancel(); // Stop speaking if they click away
+    window.speechSynthesis.cancel();
     
     saveState();
     showScreen('screen-dashboard');
@@ -475,9 +419,8 @@ window.speakDecision = () => {
     const msg = new SpeechSynthesisUtterance();
     msg.text = `Execute directive. ${currentDecision.text}. ${currentDecision.exp}`;
     msg.rate = 1.0; 
-    msg.pitch = 0.8; // Lower pitch to sound more authoritative
+    msg.pitch = 0.8;
     
-    // Select an English voice if available, preferably a system default that sounds clean
     const voices = window.speechSynthesis.getVoices();
     const prefVoice = voices.find(v => v.lang.includes('en-') && !v.name.includes('Google'));
     if(prefVoice) msg.voice = prefVoice;
